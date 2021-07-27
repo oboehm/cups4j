@@ -20,7 +20,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+import org.cups4j.CupsAuthentication;
 import org.cups4j.CupsPrinter;
+import org.cups4j.PrinterStateEnum;
 import org.cups4j.ipp.attributes.Attribute;
 import org.cups4j.ipp.attributes.AttributeGroup;
 import org.cups4j.ipp.attributes.AttributeValue;
@@ -43,19 +46,17 @@ public class CupsGetPrintersOperation extends IppOperation {
     this.ippPort = port;
   }
 
-  public List<CupsPrinter> getPrinters(String hostname, int port) throws Exception {
+  public List<CupsPrinter> getPrinters(String hostname, int port, CupsAuthentication creds) throws Exception {
     List<CupsPrinter> printers = new ArrayList<CupsPrinter>();
 
     Map<String, String> map = new HashMap<String, String>();
     map.put(
         "requested-attributes",
-        "copies-supported page-ranges-supported printer-name printer-info printer-location printer-make-and-model printer-uri-supported media-supported media-default sides-supported sides-default orientation-requested-supported printer-resolution-supported printer printer-resolution-default number-up-default number-up-supported document-format-supported print-color-mode-supported print-color-mode-default");
+        "copies-supported page-ranges-supported printer-name printer-info printer-state printer-location printer-make-and-model printer-uri-supported media-supported media-default sides-supported sides-default orientation-requested-supported printer-resolution-supported printer printer-resolution-default number-up-default number-up-supported document-format-supported print-color-mode-supported print-color-mode-default device-uri");
     // map.put("requested-attributes", "all");
     this.ippPort = port;
 
-    IppResult result = request(new URL("http://" + hostname + "/printers"), map);
-
-    // IppResultPrinter.print(result);
+    IppResult result = request(null, new URL("http://" + hostname + ":" + port + "/printers"), map, creds);
 
     for (AttributeGroup group : result.getAttributeGroupList()) {
       CupsPrinter printer = null;
@@ -64,6 +65,7 @@ public class CupsGetPrintersOperation extends IppOperation {
         String printerName = null;
         String printerLocation = null;
         String printerDescription = null;
+        PrinterStateEnum printerState = null;
         List<String> mediaSupportedList = new ArrayList<String>();
         String mediaDefault = null;
         List<String> printerResolutionSupported = new ArrayList<String>();
@@ -75,16 +77,24 @@ public class CupsGetPrintersOperation extends IppOperation {
         List<String> sidesSupported = new ArrayList<String>();
         String numberUpDefault = null;
         List<String> numberUpSupported = new ArrayList<String>();
+        String deviceURI = null;
 
         for (Attribute attr : group.getAttribute()) {
           if (attr.getName().equals("printer-uri-supported")) {
             printerURI = getAttributeValue(attr).replace("ipp://", "http://");
+            printerURI = StringUtils.remove(printerURI, "http://");
+            printerURI = StringUtils.substringAfter(printerURI, "/");
+            printerURI = "http://" + hostname + ":" + port + "/" + printerURI; 
           } else if (attr.getName().equals("printer-name")) {
             printerName = getAttributeValue(attr);
           } else if (attr.getName().equals("printer-location")) {
             printerLocation = getAttributeValue(attr);
           } else if (attr.getName().equals("printer-info")) {
             printerDescription = getAttributeValue(attr);
+          } else if (attr.getName().equals("device-uri")) {
+              deviceURI = getAttributeValue(attr);
+          } else if (attr.getName().equals("printer-state")) {
+            printerState = PrinterStateEnum.fromStringInteger(getAttributeValue(attr));
           } else if (attr.getName().equals("media-default")) {
             mediaDefault = getAttributeValue(attr);
           } else if (attr.getName().equals("media-supported")) {
@@ -107,6 +117,10 @@ public class CupsGetPrintersOperation extends IppOperation {
             sidesSupported = getAttributeValues(attr);
           } else if (attr.getName().equals("sides-default")) {
             sidesDefault = getAttributeValue(attr);
+          } else if (attr.getName().equals("printer-state")) {
+            printerState = PrinterStateEnum.fromStringInteger(getAttributeValue(attr));
+          }else if (attr.getName().equals("device-uri")){
+            deviceURI = getAttributeValue(attr);
           }
         }
         URL printerUrl = null;
@@ -120,9 +134,12 @@ public class CupsGetPrintersOperation extends IppOperation {
           throw new Exception(t);
         }
 
-        printer = new CupsPrinter(printerUrl, printerName, false);
+        printer = new CupsPrinter(creds, printerUrl, printerName);
+        printer.setState(printerState);
         printer.setLocation(printerLocation);
         printer.setDescription(printerDescription);
+        printer.setDeviceUri(deviceURI);
+        printer.setState(printerState);
         printer.setMediaDefault(mediaDefault);
         printer.setMediaSupported(mediaSupportedList);
         printer.setResolutionDefault(printerResolutionDefault);
@@ -134,6 +151,7 @@ public class CupsGetPrintersOperation extends IppOperation {
         printer.setSidesSupported(sidesSupported);
         printer.setNumberUpDefault(numberUpDefault);
         printer.setNumberUpSupported(numberUpSupported);
+        printer.setDeviceURI(deviceURI);
 
         printers.add(printer);
       }

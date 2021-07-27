@@ -1,29 +1,37 @@
 package org.cups4j;
 
-import ch.ethz.vppserver.ippclient.IppResult;
-import org.cups4j.ipp.ResponseException;
-import org.cups4j.ipp.attributes.Attribute;
-import org.cups4j.ipp.attributes.AttributeGroup;
-import org.cups4j.operations.ipp.*;
-
 import java.io.InputStream;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.cups4j.ipp.attributes.Attribute;
+import org.cups4j.ipp.attributes.AttributeGroup;
+import org.cups4j.operations.ipp.IppCreateJobOperation;
+import org.cups4j.operations.ipp.IppGetJobAttributesOperation;
+import org.cups4j.operations.ipp.IppGetJobsOperation;
+import org.cups4j.operations.ipp.IppPrintJobOperation;
+import org.cups4j.operations.ipp.IppSendDocumentOperation;
 
 /**
  * Copyright (C) 2009 Harald Weyhing
- * <p>
+ * 
  * This program is free software; you can redistribute it and/or modify it under the terms of the
  * GNU Lesser General Public License as published by the Free Software Foundation; either version 3
  * of the License, or (at your option) any later version.
- * <p>
+ * 
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * <p>
+ * 
  * See the GNU Lesser General Public License for more details. You should have received a copy of
  * the GNU Lesser General Public License along with this program; if not, see
  * <http://www.gnu.org/licenses/>.
  */
+
+import ch.ethz.vppserver.ippclient.IppResult;
 
 /**
  * Represents a printer on your IPP server
@@ -32,6 +40,7 @@ import java.util.*;
 public class CupsPrinter {
   private URL printerURL = null;
   private String name = null;
+  private PrinterStateEnum state = null;
   private String description = null;
   private String location = null;
   private boolean isDefault = false;
@@ -40,6 +49,12 @@ public class CupsPrinter {
   private String resolutionDefault = null;
   private String colorModeDefault = null;
   private String sidesDefault = null;
+  private String deviceURI = null;
+
+    private String deviceUri = null;
+    private String printerState = null;
+    private String printerStateMessage = null;
+    private String printerStateReasons = null;
 
   private String numberUpDefault = null;
   private List<String> numberUpSupported = new ArrayList<String>();
@@ -48,20 +63,21 @@ public class CupsPrinter {
   private List<String> colorModeSupported = new ArrayList<String>();
   private List<String> mimeTypesSupported = new ArrayList<String>();
   private List<String> sidesSupported = new ArrayList<String>();
+  
+  private final CupsAuthentication creds;
 
   /**
    * Constructor
-   * 
+   *
    * @param printerURL
    * @param printerName
-   * @param isDefault
-   *          true if this is the default printer on this IPP server
    */
-  public CupsPrinter(URL printerURL, String printerName, boolean isDefault) {
-    this.printerURL = printerURL;
-    this.name = printerName;
-    this.isDefault = isDefault;
-    updateClassAttribute();
+  public CupsPrinter(CupsAuthentication creds, URL printerURL, String printerName) {
+	  super();
+	  this.creds = creds;
+	  this.printerURL = printerURL;
+	  this.name = printerName;
+	  updateClassAttribute();
   }
 
   private void updateClassAttribute() {
@@ -72,7 +88,7 @@ public class CupsPrinter {
 
   /**
    * Print method
-   * 
+   *
    * @param printJob
    * @return PrintRequestResult
    * @throws Exception
@@ -94,9 +110,6 @@ public class CupsPrinter {
 
     if (userName == null) {
       userName = CupsClient.DEFAULT_USER;
-    }
-    if (attributes == null) {
-      attributes = new HashMap<String, String>();
     }
 
     attributes.put("requesting-user-name", userName);
@@ -153,7 +166,7 @@ public class CupsPrinter {
       addAttribute(attributes, "job-attributes", "sides:keyword:two-sided-long-edge");
     }
     IppPrintJobOperation command = new IppPrintJobOperation(printerURL.getPort());
-    IppResult ippResult = command.request(printerURL, attributes, document);
+    IppResult ippResult = command.request(this, printerURL, attributes, document, creds);
     PrintRequestResult result = new PrintRequestResult(ippResult);
     // IppResultPrinter.print(result);
 
@@ -261,13 +274,12 @@ public class CupsPrinter {
     attributes.put("job-name", job.getJobName());
     attributes.put("requesting-user-name", job.getUserName());
     IppCreateJobOperation command = new IppCreateJobOperation(printerURL.getPort());
-    IppResult ippResult = command.request(printerURL, attributes);
-    if (ippResult.getHttpStatusCode() == 200) {
-      AttributeGroup attrGroup = ippResult.getAttributeGroup("job-attributes-tag");
-      return Integer.parseInt(attrGroup.getAttribute("job-id").getValue());
-    } else {
-      throw new ResponseException(command, ippResult);
+    IppResult ippResult = command.request(this, printerURL, attributes, creds);
+    if (ippResult.isPrintQueueUnavailable()) {
+    	throw new IllegalStateException("The print queueu is not available: " + ippResult.getIppStatusResponse());
     }
+    AttributeGroup attrGroup = ippResult.getAttributeGroup("job-attributes-tag");
+    return Integer.parseInt(attrGroup.getAttribute("job-id").getValue());
   }
 
   /**
@@ -286,14 +298,14 @@ public class CupsPrinter {
    */
   public PrintRequestResult print(PrintJob job, int jobId, boolean lastDocument) {
     IppSendDocumentOperation op = new IppSendDocumentOperation(printerURL.getPort(), jobId, lastDocument);
-    IppResult ippResult = op.request(printerURL, job);
+    IppResult ippResult = op.request(this, printerURL, job, creds);
     PrintRequestResult result = new PrintRequestResult(ippResult);
     result.setJobId(jobId);
     return result;
   }
 
   /**
-   * 
+   *
    * @param map
    * @param name
    * @param value
@@ -312,7 +324,7 @@ public class CupsPrinter {
 
   /**
    * Get a list of jobs
-   * 
+   *
    * @param whichJobs
    *          completed, not completed or all
    * @param user
@@ -327,12 +339,12 @@ public class CupsPrinter {
   public List<PrintJobAttributes> getJobs(WhichJobsEnum whichJobs, String user, boolean myJobs) throws Exception {
     IppGetJobsOperation command = new IppGetJobsOperation(printerURL.getPort());
 
-    return command.getPrintJobs(this, whichJobs, user, myJobs);
+    return command.getPrintJobs(this, whichJobs, user, myJobs, creds);
   }
 
   /**
    * Get current status for the print job with the given ID.
-   * 
+   *
    * @param jobID
    * @return job status
    * @throws Exception
@@ -343,7 +355,7 @@ public class CupsPrinter {
 
   /**
    * Get current status for the print job with the given ID
-   * 
+   *
    * @param userName
    * @param jobID
    * @return job status
@@ -351,14 +363,15 @@ public class CupsPrinter {
    */
   public JobStateEnum getJobStatus(String userName, int jobID) throws Exception {
     IppGetJobAttributesOperation command = new IppGetJobAttributesOperation(printerURL.getPort());
-    PrintJobAttributes job = command.getPrintJobAttributes(printerURL.getHost(), userName, printerURL.getPort(), jobID);
+    PrintJobAttributes job = command.getPrintJobAttributes(printerURL.getHost(), userName, 
+    		printerURL.getPort(), jobID, creds);
 
     return job.getJobState();
   }
 
   /**
    * Get the URL for this printer
-   * 
+   *
    * @return printer URL
    */
   public URL getPrinterURL() {
@@ -367,21 +380,21 @@ public class CupsPrinter {
 
   /**
    * Is this the default printer
-   * 
+   *
    * @return true if this is the default printer false otherwise
    */
   public boolean isDefault() {
     return isDefault;
   }
 
-  protected void setDefault(boolean isDefault) {
+  public void setDefault(boolean isDefault) {
     this.isDefault = isDefault;
   }
 
   /**
    * Get a String representation of this printer consisting of the printer URL
    * and the name
-   * 
+   *
    * @return String
    */
   public String toString() {
@@ -394,13 +407,25 @@ public class CupsPrinter {
    * For a printer http://localhost:631/printers/printername 'printername' will
    * be returned.
    * </p>
-   * 
+   *
    * @return printer name
    */
   public String getName() {
     return name;
   }
 
+  /**
+   * Get state of this printer.
+   * <p>
+   * For a printer http://localhost:631/printers/printername 'printer-state' will
+   * be returned.
+   * </p>
+   *
+   * @return printer state
+   */
+  public PrinterStateEnum getState() {
+    return state;
+  }
   /**
    * Get location attribute for this printer
    * 
@@ -416,7 +441,7 @@ public class CupsPrinter {
 
   /**
    * Get description attribute for this printer
-   * 
+   *
    * @return description
    */
   public String getDescription() {
@@ -460,9 +485,43 @@ public class CupsPrinter {
     this.name = name;
   }
 
+  public void setState(PrinterStateEnum state) { this.state = state; }
+
   public void setDescription(String description) {
     this.description = description;
   }
+
+    public String getDeviceUri() {
+        return deviceUri;
+    }
+
+    public void setDeviceUri(final String deviceUri) {
+        this.deviceUri = deviceUri;
+    }
+
+    public String getPrinterState() {
+        return printerState;
+    }
+
+    public void setPrinterState(final String printerState) {
+        this.printerState = printerState;
+    }
+
+    public String getPrinterStateMessage() {
+        return printerStateMessage;
+    }
+
+    public void setPrinterStateMessage(final String printerStateMessage) {
+        this.printerStateMessage = printerStateMessage;
+    }
+
+    public String getPrinterStateReasons() {
+        return printerStateReasons;
+    }
+
+    public void setPrinterStateReasons(final String printerStateReasons) {
+        this.printerStateReasons = printerStateReasons;
+    }
 
   public void setMediaDefault(String mediaDefault) {
     this.mediaDefault = mediaDefault;
@@ -539,4 +598,11 @@ public class CupsPrinter {
     this.printerClass = printerClass;
   }
 
+  public String getDeviceURI() {
+    return this.deviceURI;
+  }
+
+  public void setDeviceURI(String deviceURI) {
+    this.deviceURI = deviceURI;
+  }
 }
