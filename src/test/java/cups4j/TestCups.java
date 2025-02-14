@@ -32,7 +32,16 @@ public class TestCups {
    * If you have no CUPS running on your local machine you must set the
    * envrionment variables 'host' and 'port' to your CUPS server in the
    * network. Otherwise the test fails.
-   * 
+   * <p>
+   * Default for testing is <a href="http://localhost:631/printers/"
+   * >localhost:631</a>. If you wan't to use it check if it's avaiable.
+   * On a Mac you man need to call
+   * <pre>
+   *     cupsctl WebInterface=yes
+   * </pre>
+   * to activate it.
+   * </p>
+   *
    * @return your CupsClient for testing
    */
   public static CupsClient getCupsClient() {

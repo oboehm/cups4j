@@ -1,32 +1,13 @@
 package org.cups4j;
 
-import java.net.URL;
-import java.util.List;
-
 import org.cups4j.operations.cups.CupsGetDefaultOperation;
-
-/**
- * Copyright (C) 2009 Harald Weyhing
- * 
- * This program is free software; you can redistribute it and/or modify it under the terms of the
- * GNU Lesser General Public License as published by the Free Software Foundation; either version 3
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
- * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * 
- * See the GNU Lesser General Public License for more details. You should have received a copy of
- * the GNU Lesser General Public License along with this program; if not, see
- * <http://www.gnu.org/licenses/>.
- */
-
 import org.cups4j.operations.cups.CupsGetPrintersOperation;
 import org.cups4j.operations.cups.CupsMoveJobOperation;
-import org.cups4j.operations.ipp.IppCancelJobOperation;
-import org.cups4j.operations.ipp.IppGetJobAttributesOperation;
-import org.cups4j.operations.ipp.IppGetJobsOperation;
-import org.cups4j.operations.ipp.IppHoldJobOperation;
-import org.cups4j.operations.ipp.IppReleaseJobOperation;
+import org.cups4j.operations.ipp.*;
+
+import java.net.URI;
+import java.net.URL;
+import java.util.List;
 
 /**
  * Main Client for accessing CUPS features like
@@ -48,6 +29,7 @@ public class CupsClient {
   public static final int DEFAULT_PORT = 631;
   public static final String DEFAULT_USER = System.getProperty("user.name", "anonymous");
 
+  private final URI cupsURL;
   private String host = null;
   private int port = -1;
   private String user = null;
@@ -55,22 +37,19 @@ public class CupsClient {
   private CupsAuthentication creds = null;
 
   /**
-   * Creates a CupsClient for localhost port 631 with user anonymous
-   * 
-   * @throws Exception
+   * Creates a CupsClient for localhost port 631 with user anonymous.
    */
-  public CupsClient() throws Exception {
+  public CupsClient() {
     this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_USER);
   }
 
   /**
    * Creates a CupsClient for provided host and port with user anonymous
    * 
-   * @param host
-   * @param port
-   * @throws Exception
+   * @param host host
+   * @param port port
    */
-  public CupsClient(String host, int port) throws Exception {
+  public CupsClient(String host, int port) {
     this(host, port, DEFAULT_USER);
   }
 
@@ -80,24 +59,9 @@ public class CupsClient {
    * @param host
    * @param port
    * @param userName
-   * @throws Exception
    */
-  public CupsClient(String host, int port, String userName) throws Exception {
-    if (host != null && !"".equals(host)) {
-      this.host = host;
-    } else {
-      throw new Exception("The hostname specified: <" + host + "> is not valid");
-    }
-
-    if (port > 0) {
-      this.port = port;
-    } else {
-      throw new Exception("The specified port number: <" + port + "> is not valid");
-    }
-
-    if (userName != null && !"".equals(userName)) {
-      this.user = userName;
-    }
+  public CupsClient(String host, int port, String userName) {
+    this(host, port, userName, null);
   }
 
   /**
@@ -106,26 +70,31 @@ public class CupsClient {
    * @param host
    * @param port
    * @param userName
-   * @throws Exception
    */
-  public CupsClient(String host, int port, String userName, CupsAuthentication creds) throws Exception {
-    super();
+  public CupsClient(String host, int port, String userName, CupsAuthentication creds) {
+    this(toURI(host, port), userName, creds);
+  }
+
+  private static URI toURI(String host, int port) {
+    if (host == null || "".equals(host)) {
+      throw new IllegalArgumentException("The hostname specified: <" + host + "> is not valid");
+    }
+    if (port < 0) {
+      throw new IllegalArgumentException("The specified port number: <" + port + "> is not valid");
+    }
+    return URI.create(String.format("http://%s:%d", host, port));
+  }
+
+  public CupsClient(URI cupsURL) {
+    this(cupsURL, DEFAULT_USER, null);
+  }
+
+  public CupsClient(URI cupsURL, String userName, CupsAuthentication creds) {
+    this.cupsURL = cupsURL;
+    this.user = userName;
     this.creds = creds;
-    if (host != null && !"".equals(host)) {
-      this.host = host;
-    } else {
-      throw new Exception("The hostname specified: <" + host + "> is not valid");
-    }
-
-    if (port > 0) {
-      this.port = port;
-    } else {
-      throw new Exception("The specified port number: <" + port + "> is not valid");
-    }
-
-    if (userName != null && !"".equals(userName)) {
-      this.user = userName;
-    }
+    this.host = cupsURL.getHost();
+    this.port = cupsURL.getPort();
   }
 
   /**
