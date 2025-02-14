@@ -1,6 +1,6 @@
 package org.cups4j.operations;
 
-/**
+/*
  * Copyright (C) 2009 Harald Weyhing
  * 
  * This program is free software; you can redistribute it and/or modify it under the terms of the
@@ -14,10 +14,10 @@ package org.cups4j.operations;
  * the GNU Lesser General Public License along with this program; if not, see
  * <http://www.gnu.org/licenses/>.
  */
+
 import ch.ethz.vppserver.ippclient.IppResponse;
 import ch.ethz.vppserver.ippclient.IppResult;
 import ch.ethz.vppserver.ippclient.IppTag;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -156,7 +155,7 @@ public abstract class IppOperation {
 
     CloseableHttpClient client = IppHttp.createHttpClient();
 	
-    HttpPost httpPost = new HttpPost(new URI("http://" + url.getHost() + ":" + ippPort) + url.getPath());
+    HttpPost httpPost = new HttpPost(url.toString());
     IppHttp.setHttpHeaders(httpPost, printer, creds);
 
     byte[] bytes = new byte[ippBuf.limit()];

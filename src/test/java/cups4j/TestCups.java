@@ -4,6 +4,7 @@ import org.cups4j.CupsClient;
 import org.cups4j.CupsPrinter;
 import org.junit.Test;
 
+import java.net.URI;
 import java.util.List;
 
 public class TestCups {
@@ -30,11 +31,11 @@ public class TestCups {
 
   /**
    * If you have no CUPS running on your local machine you must set the
-   * envrionment variables 'host' and 'port' to your CUPS server in the
-   * network. Otherwise the test fails.
+   * envrionment variable 'cups.url' to your CUPS server in the network.
+   * Otherwise the test fails.
    * <p>
    * Default for testing is <a href="http://localhost:631/printers/"
-   * >localhost:631</a>. If you wan't to use it check if it's avaiable.
+   * >localhost:631</a>. If you wan't to use it check if it's available.
    * On a Mac you man need to call
    * <pre>
    *     cupsctl WebInterface=yes
@@ -45,13 +46,8 @@ public class TestCups {
    * @return your CupsClient for testing
    */
   public static CupsClient getCupsClient() {
-    String host = System.getProperty("host", "localhost");
-    int port = Integer.parseInt(System.getProperty("port", "631"));
-    try {
-      return new CupsClient(host, port);
-    } catch (Exception ex) {
-      throw new IllegalStateException("cannot get CUPS client for " + host + ":" + port);
-    }
+    URI cupsURI = URI.create(System.getProperty("cups.url", "http://localhost:631"));
+    return new CupsClient(cupsURI);
   }
 
 }

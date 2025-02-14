@@ -73,8 +73,8 @@ public class CupsClient {
     this(toURI(host, port), userName, creds);
   }
 
-  private static URI toURI(String host, int port) {
-    if (host == null || "".equals(host)) {
+  public static URI toURI(String host, int port) {
+    if (host == null || host.isEmpty()) {
       throw new IllegalArgumentException("The hostname specified: <" + host + "> is not valid");
     }
     if (port < 0) {
@@ -108,7 +108,7 @@ public class CupsClient {
    * @throws Exception
    */
   public List<CupsPrinter> getPrinters() throws Exception {
-    return new CupsGetPrintersOperation(getPort()).getPrinters(getHost(), getPort(), creds);
+    return new CupsGetPrintersOperation(getPort()).getPrinters(cupsURL, creds);
   }
 
   /**
@@ -176,7 +176,7 @@ public class CupsClient {
    * @throws Exception
    */
   public CupsPrinter getPrinterOnCurrentHost(String printerURL) throws Exception {
-    return getPrinter(new URL("http://" + getHost() + ":" + getPort() + printerURL));
+    return getPrinter(new URL(cupsURL + "/" + printerURL));
   }
 
   /**
