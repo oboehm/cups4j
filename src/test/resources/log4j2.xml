@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<Configuration>
+  <Appenders>
+    <Console name="STDOUT" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss} %-5p [%-4.4t] %-28.28C{3} - %m%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="STDOUT" />
+    </Root>
+    <Logger name="org.cups4j.operations.cups.CupsGetPrintersOperation" level="debug"/>
+  </Loggers>
+</Configuration>
