@@ -117,6 +117,7 @@ public final class CupsPrinterIT {
             return new PrintJob.Builder(content)
                     .jobName(jobname)
                     .userName(userName)
+                    .color(true)
                     .build();
         } catch (IOException ioe) {
             throw new IllegalArgumentException("cannot read '" + file + "'", ioe);

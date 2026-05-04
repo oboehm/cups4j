@@ -110,4 +110,9 @@ public class Attribute {
     this.description = value;
   }
 
+  @Override
+  public String toString() {
+    return name + "=" + getValue();
+  }
+
 }

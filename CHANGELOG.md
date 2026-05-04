@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [0.8.1] (01-May-2026)
+
+### Changed
+
+- at least Java 11 required
+- URL parameters are now deprecated and replaced by URI parameters
 
 ### Added
 
@@ -14,9 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([issue #81](https://github.com/harwey/cups4j/issues/81))
 - testcontainers is used for unit testing
   ([PR #65](https://github.com/harwey/cups4j/pull/65), [PR #90](https://github.com/harwey/cups4j/pull/90))
+- PrintJob.Builder has now an attribute method to build attributes
+  (added with [issue #73](https://github.com/harwey/cups4j/issues/73))
 
 ### Fixed
 
+- update to commons-lang3
+  ([issue #94](https://github.com/harwey/cups4j/issues/94))
+- fix IPP response text decoding using attributes-charset
+  ([PR #93](https://github.com/harwey/cups4j/pull/93))
 - the following job operations can now handle non-standard IPP ports
   - CupsMoveJobOperation
   - IppHoldJobOperation
